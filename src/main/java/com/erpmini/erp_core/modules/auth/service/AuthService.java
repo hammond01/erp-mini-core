@@ -1,5 +1,6 @@
 package com.erpmini.erp_core.modules.auth.service;
 
+import com.erpmini.erp_core.modules.auth.annotation.AuditLoggable;
 import com.erpmini.erp_core.modules.auth.dto.*;
 import com.erpmini.erp_core.modules.auth.entity.*;
 import com.erpmini.erp_core.modules.auth.repository.*;
@@ -8,19 +9,18 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
-    private final AuditLogRepository auditRepo;
     private final JwtProvider jwtProvider;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
+    @AuditLoggable(action = "REGISTER", entityType = "USER")
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             throw new RuntimeException("Username already exists");
@@ -38,6 +38,7 @@ public class AuthService {
         userRepository.save(user);
 
         String token = jwtProvider.generateToken(user);
+        
         return new AuthResponse(
                 token,
                 user.getUsername(),
@@ -45,6 +46,7 @@ public class AuthService {
         );
     }
 
+    @AuditLoggable(action = "LOGIN", entityType = "USER")
     public AuthResponse login(AuthRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -54,23 +56,13 @@ public class AuthService {
         }
 
         String token = jwtProvider.generateToken(user);
+        
         return new AuthResponse(
                 token,
                 user.getUsername(),
                 user.getRoles().stream().map(Role::getName).collect(Collectors.toSet())
         );
     }
-
-    private void saveLog(String username, String action, String detail, String ip) {
-        AuditLog log = new AuditLog();
-        log.setUsername(username);
-        log.setAction(action);
-        log.setDetail(detail);
-        log.setIpAddress(ip);
-        log.setActionAt(LocalDateTime.now());
-        auditRepo.save(log);
-    }
-
 
     public User getCurrentUser() {
         // lấy từ SecurityContextHolder

@@ -23,7 +23,6 @@ public class JwtProvider {
         byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
         return new SecretKeySpec(keyBytes, SignatureAlgorithm.HS512.getJcaName());
     }
-    private final long JWT_EXPIRATION = 1000 * 60 * 60;
 
     public String generateToken(User user) {
         Map<String, Object> claims = new HashMap<>();
